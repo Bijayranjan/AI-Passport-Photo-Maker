@@ -1,0 +1,5 @@
+{
+  "name": "Passport Photo AI",
+  "description": "Create professional Indian passport photos (35x45mm) with AI background removal and 4x6 printable sheet generation.",
+  "requestFramePermissions": []
+}
