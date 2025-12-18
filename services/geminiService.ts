@@ -1,12 +1,17 @@
 import { GoogleGenAI } from "@google/genai";
 import { BackgroundColor, ClothingOption } from "../types";
 
+const MAX_RETRIES = 3;
+const INITIAL_DELAY = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const processBackground = async (
   imageBase64: string,
   color: BackgroundColor,
-  clothing: ClothingOption
+  clothing: ClothingOption,
+  retryCount = 0
 ): Promise<string> => {
-  // Check for various ways the API Key might be missing or invalid after build
   const apiKey = process.env.API_KEY;
 
   if (!apiKey || apiKey === "undefined" || apiKey === "null" || apiKey === "") {
@@ -73,7 +78,6 @@ const processBackground = async (
       },
     });
 
-    // Check for image in response parts
     const candidates = response.candidates;
     if (candidates && candidates.length > 0) {
       for (const part of candidates[0].content.parts) {
@@ -85,14 +89,21 @@ const processBackground = async (
 
     throw new Error("The AI returned a response but no image was found. Try a clearer photo.");
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    console.error(`Gemini API Error (Attempt ${retryCount + 1}):`, error);
     
-    // Check for specific error status codes
+    // Check for Rate Limit Error (429)
+    if (error.message?.includes("429") && retryCount < MAX_RETRIES) {
+      const delay = INITIAL_DELAY * Math.pow(2, retryCount); // 2s, 4s, 8s
+      await sleep(delay);
+      return processBackground(imageBase64, color, clothing, retryCount + 1);
+    }
+
     if (error.message?.includes("403") || error.message?.includes("API_KEY_INVALID")) {
         throw new Error("Invalid API Key. Please verify your key in Google AI Studio.");
     }
+    
     if (error.message?.includes("429")) {
-        throw new Error("Rate limit exceeded. Please wait a minute and try again.");
+        throw new Error("Maximum rate limit reached. Please wait a few minutes before trying again.");
     }
     
     throw new Error(error.message || "An unexpected error occurred during AI processing.");
