@@ -26,7 +26,6 @@ const App = () => {
 
   const handleCropComplete = (cropped: string) => {
     setCroppedImage(cropped);
-    // Move to process stage immediately, or let user review? Let's move to process UI.
     setState(AppState.PROCESS);
   };
 
@@ -45,18 +44,18 @@ const App = () => {
       setFinalSheet(sheet);
       
       setState(AppState.PREVIEW);
-    } catch (err) {
-        // Fallback: If AI fails, use cropped image directly but warn user
-        console.error(err);
+    } catch (err: any) {
+        console.error("Processing error:", err);
+        const errorMessage = err.message || "Unknown error";
         try {
-            // Note: If clothing was requested but failed, we just revert to original clothes
+            // Fallback: If AI fails, use cropped image directly but show the specific error
             const sheet = await generatePassportSheet(croppedImage);
             setFinalSheet(sheet);
-            setProcessedImage(croppedImage); // Use raw crop
+            setProcessedImage(croppedImage);
             setState(AppState.PREVIEW);
-            setError("AI processing failed. Using original photo.");
+            setError(`AI processing failed: ${errorMessage}. Using original photo.`);
         } catch (innerErr) {
-             setError("Failed to generate image. Please try again.");
+             setError(`Total failure: ${errorMessage}`);
         }
     } finally {
       setIsProcessing(false);
@@ -114,8 +113,8 @@ const App = () => {
         
         {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-3">
-                <AlertCircle size={20} />
-                <p>{error}</p>
+                <AlertCircle size={20} className="flex-shrink-0" />
+                <p className="text-sm font-medium">{error}</p>
             </div>
         )}
 
@@ -160,7 +159,6 @@ const App = () => {
 
         {state === AppState.PROCESS && croppedImage && (
           <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-8 items-start animate-fade-in">
-             {/* Left: Preview of Crop */}
              <div className="w-full md:w-1/3 flex flex-col gap-4">
                <h3 className="font-medium text-slate-700">Selected Crop</h3>
                <img src={croppedImage} alt="Crop" className="w-full rounded-lg shadow-md border border-slate-200" />
@@ -169,11 +167,9 @@ const App = () => {
                </button>
              </div>
 
-             {/* Right: Controls */}
              <div className="w-full md:w-2/3 bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
                <h2 className="text-2xl font-bold text-slate-900 mb-6">Step 2: Customize</h2>
                
-               {/* Background Selection */}
                <div className="mb-8">
                  <label className="block text-sm font-medium text-slate-700 mb-3">Background Color</label>
                  <div className="flex gap-4">
@@ -195,7 +191,6 @@ const App = () => {
                  </div>
                </div>
 
-               {/* Clothing Selection */}
                <div className="mb-8">
                   <div className="flex items-center justify-between mb-3">
                       <label className="block text-sm font-medium text-slate-700">Professional Attire (Optional)</label>
@@ -203,7 +198,6 @@ const App = () => {
                   </div>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {/* Option: Original */}
                       <button
                         onClick={() => setSelectedClothing(ClothingOption.NONE)}
                         className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${selectedClothing === ClothingOption.NONE ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 hover:border-slate-300'}`}
@@ -212,7 +206,6 @@ const App = () => {
                          <span className="text-xs font-medium text-slate-700">Original</span>
                       </button>
 
-                      {/* Option: Male Blazer */}
                       <button
                         onClick={() => setSelectedClothing(ClothingOption.MALE_BLAZER)}
                         className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${selectedClothing === ClothingOption.MALE_BLAZER ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 hover:border-slate-300'}`}
@@ -221,7 +214,6 @@ const App = () => {
                          <span className="text-xs font-medium text-slate-700">Male Suit</span>
                       </button>
 
-                      {/* Option: Female Blazer */}
                       <button
                         onClick={() => setSelectedClothing(ClothingOption.FEMALE_BLAZER)}
                         className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${selectedClothing === ClothingOption.FEMALE_BLAZER ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 hover:border-slate-300'}`}
@@ -230,7 +222,6 @@ const App = () => {
                          <span className="text-xs font-medium text-slate-700">Female Suit</span>
                       </button>
 
-                      {/* Option: Male Shirt */}
                       <button
                         onClick={() => setSelectedClothing(ClothingOption.MALE_SHIRT)}
                         className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${selectedClothing === ClothingOption.MALE_SHIRT ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 hover:border-slate-300'}`}
@@ -239,7 +230,6 @@ const App = () => {
                          <span className="text-xs font-medium text-slate-700">Male Shirt</span>
                       </button>
 
-                      {/* Option: Female Shirt */}
                       <button
                         onClick={() => setSelectedClothing(ClothingOption.FEMALE_SHIRT)}
                         className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${selectedClothing === ClothingOption.FEMALE_SHIRT ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 hover:border-slate-300'}`}
@@ -274,7 +264,6 @@ const App = () => {
              </div>
 
              <div className="bg-slate-200 p-4 rounded-xl overflow-auto flex justify-center shadow-inner border border-slate-300">
-                {/* Displaying scaled down version of the sheet */}
                 <img src={finalSheet} alt="Final Sheet" className="max-w-full h-auto shadow-xl bg-white" style={{ maxHeight: '600px' }} />
              </div>
 
