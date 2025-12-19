@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { BackgroundColor, ClothingOption } from "../types";
 
@@ -12,13 +13,8 @@ const processBackground = async (
   clothing: ClothingOption,
   retryCount = 0
 ): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey || apiKey === "undefined" || apiKey === "null" || apiKey === "") {
-    throw new Error("API Key is missing. Please ensure 'API_KEY' is added to Vercel Environment Variables and trigger a fresh Redeploy.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Correctly initialize GoogleGenAI using process.env.API_KEY directly as required by guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = "gemini-2.5-flash-image";
 
   // Clean base64 string
@@ -81,6 +77,7 @@ const processBackground = async (
     const candidates = response.candidates;
     if (candidates && candidates.length > 0) {
       for (const part of candidates[0].content.parts) {
+        // Iterate through all parts to find the image data as specified in guidelines
         if (part.inlineData && part.inlineData.data) {
            return `data:image/png;base64,${part.inlineData.data}`;
         }
@@ -91,9 +88,9 @@ const processBackground = async (
   } catch (error: any) {
     console.error(`Gemini API Error (Attempt ${retryCount + 1}):`, error);
     
-    // Check for Rate Limit Error (429)
+    // Implement robust handling for API errors and retry logic (429)
     if (error.message?.includes("429") && retryCount < MAX_RETRIES) {
-      const delay = INITIAL_DELAY * Math.pow(2, retryCount); // 2s, 4s, 8s
+      const delay = INITIAL_DELAY * Math.pow(2, retryCount);
       await sleep(delay);
       return processBackground(imageBase64, color, clothing, retryCount + 1);
     }
