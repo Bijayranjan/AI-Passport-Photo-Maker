@@ -7,7 +7,8 @@ export enum AppState {
 
 export enum BackgroundColor {
   WHITE = 'white',
-  BLUE = '#4b9cd3', // Standard passport blue
+  BLUE = '#2296F3', // Deeper, more saturated blue
+  ORIGINAL = 'original',
 }
 
 export enum ClothingOption {
@@ -15,7 +16,19 @@ export enum ClothingOption {
   MALE_BLAZER = 'Black Suit (Male)',
   FEMALE_BLAZER = 'Black Blazer (Female)',
   MALE_SHIRT = 'White Shirt (Male)',
-  FEMALE_SHIRT = 'Formal Shirt (Female)',
+  FEMALE_SHIRT = 'Formal Shirt (Formal)',
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface CurveSettings {
+  all: Point[];
+  red: Point[];
+  green: Point[];
+  blue: Point[];
 }
 
 export interface CropArea {
