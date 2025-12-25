@@ -72,32 +72,17 @@ const Cropper: React.FC<CropperProps> = ({ imageSrc, onCropComplete, onCancel })
 
   const handleCrop = async () => {
     if (!imageRef.current || !containerRef.current) return;
-
-    const img = imageRef.current;
-    const container = containerRef.current;
-    
-    const renderedWidth = img.naturalWidth * zoom;
-    const renderedHeight = img.naturalHeight * zoom;
-    const containerW = container.clientWidth;
-    const containerH = container.clientHeight;
-    
-    const cropBoxLeft = (containerW - CROP_BOX_WIDTH) / 2;
-    const cropBoxTop = (containerH - CROP_BOX_HEIGHT) / 2;
-
-    const imgLeftInContainer = (containerW - renderedWidth) / 2 + position.x;
-    const imgTopInContainer = (containerH - renderedHeight) / 2 + position.y;
-
-    const offsetX = cropBoxLeft - imgLeftInContainer;
-    const offsetY = cropBoxTop - imgTopInContainer;
-    const scale = img.naturalWidth / renderedWidth;
     
     try {
-      const cropped = await getCroppedImg(imageSrc, {
-        x: offsetX * scale,
-        y: offsetY * scale,
-        width: CROP_BOX_WIDTH * scale,
-        height: CROP_BOX_HEIGHT * scale,
-      }, rotation);
+      // Re-architected call: Pass the raw transformation state.
+      // The utility handles the high-res canvas reproduction.
+      const cropped = await getCroppedImg(
+        imageSrc, 
+        zoom, 
+        rotation, 
+        position, 
+        { width: CROP_BOX_WIDTH, height: CROP_BOX_HEIGHT }
+      );
       onCropComplete(cropped);
     } catch (e) {
       console.error(e);
@@ -155,7 +140,7 @@ const Cropper: React.FC<CropperProps> = ({ imageSrc, onCropComplete, onCancel })
                </div>
             </div>
 
-            {/* The Image */}
+            {/* The Image - Matches the export transform */}
             <div className="flex items-center justify-center w-full h-full pointer-events-none">
               <img
                 ref={imageRef}
@@ -203,19 +188,17 @@ const Cropper: React.FC<CropperProps> = ({ imageSrc, onCropComplete, onCancel })
           <div className="flex flex-col items-center w-full">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Rotation</span>
             
-            {/* Vertical Range Slider */}
             <div className="relative h-64 w-12 flex items-center justify-center mb-6">
               <input
                 type="range"
                 min="-90"
                 max="90"
                 step="1"
-                value={((rotation + 90) % 180) - 90} // Normalized for -90 to 90 range display
+                value={((rotation + 90) % 180) - 90} 
                 onChange={(e) => setRotation(parseInt(e.target.value))}
                 className="w-64 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 absolute z-10 -rotate-90 origin-center"
               />
               
-              {/* Scale Ticks */}
               <div className="absolute inset-y-0 right-0 flex flex-col justify-between py-1 pointer-events-none">
                  {[90, 45, 0, -45, -90].map(deg => (
                    <div key={deg} className="flex items-center gap-2">
@@ -226,7 +209,6 @@ const Cropper: React.FC<CropperProps> = ({ imageSrc, onCropComplete, onCancel })
               </div>
             </div>
             
-            {/* Manual Text Input Field */}
             <div className="w-full flex flex-col items-center gap-3">
               <div className="relative group">
                 <input 
@@ -249,7 +231,6 @@ const Cropper: React.FC<CropperProps> = ({ imageSrc, onCropComplete, onCancel })
 
           <div className="w-full border-t border-slate-900 my-2"></div>
 
-          {/* Quick Rotation Buttons */}
           <div className="flex flex-col gap-2 w-full">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 text-center mb-1">Quick Steps</span>
             <div className="grid grid-cols-2 gap-2">
@@ -267,7 +248,6 @@ const Cropper: React.FC<CropperProps> = ({ imageSrc, onCropComplete, onCancel })
         </div>
       </div>
 
-      {/* Action Footer */}
       <div className="flex gap-4 mt-8 pb-4">
         <button 
           onClick={onCancel}
