@@ -2,7 +2,6 @@ import { CurveSettings, Point } from "../types";
 
 /**
  * Creates a high-quality downsized version of a large image for UI performance.
- * Increased maxSize to 2048 and quality to 0.95 to preserve detail.
  */
 export const createPreviewImage = (imageSrc: string, maxSize = 2048): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -30,7 +29,6 @@ export const createPreviewImage = (imageSrc: string, maxSize = 2048): Promise<st
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject(new Error('Canvas failed'));
       
-      // Use high quality image smoothing
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
@@ -74,12 +72,15 @@ export const calculateHistogram = (imageSrc: string): Promise<number[]> => {
 };
 
 /**
- * Crops an image based on the provided area.
- * Increased MAX_HEIGHT to 2048 to maintain print-quality resolution.
+ * Robust Cropping Utility.
+ * It takes the UI transformation parameters and recreates them on a high-res canvas.
  */
 export const getCroppedImg = (
   imageSrc: string,
-  pixelCrop: { x: number; y: number; width: number; height: number }
+  zoom: number,
+  rotation: number,
+  position: { x: number; y: number },
+  cropSize: { width: number; height: number }
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -87,48 +88,51 @@ export const getCroppedImg = (
     image.crossOrigin = 'anonymous';
     image.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_HEIGHT = 2048; 
-      let targetWidth = pixelCrop.width;
-      let targetHeight = pixelCrop.height;
-
-      if (targetHeight > MAX_HEIGHT) {
-        const scale = MAX_HEIGHT / targetHeight;
-        targetWidth = targetWidth * scale;
-        targetHeight = MAX_HEIGHT;
-      }
-
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
       const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas context failed'));
 
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
+      // Use a high-quality print resolution scale (300 DPI for 35x45mm)
+      // 35mm at 300DPI is ~413px. We use a standard high-res target.
+      const OUTPUT_SCALE = 30; // Scale factor to reach ~1050x1350
+      canvas.width = cropSize.width * (1050 / cropSize.width); 
+      canvas.height = cropSize.height * (1350 / cropSize.height);
+
+      const renderScale = canvas.width / cropSize.width;
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
+      // 1. Move to the center of the output canvas
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      
+      // 2. Apply high-res render scale
+      ctx.scale(renderScale, renderScale);
+
+      // 3. Apply UI-matched Transformations (matching CSS)
+      // Note: CSS transform order usually happens in reverse sequence or as specified.
+      // translate(pos.x, pos.y) rotate(rotation) scale(zoom)
+      ctx.translate(position.x, position.y);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.scale(zoom, zoom);
+
+      // 4. Draw image centered
+      // We assume the image in UI is also centered in its parent
       ctx.drawImage(
         image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        targetWidth,
-        targetHeight
+        -image.naturalWidth / 2,
+        -image.naturalHeight / 2,
+        image.naturalWidth,
+        image.naturalHeight
       );
 
       resolve(canvas.toDataURL('image/png', 1.0));
     };
-    image.onerror = (error) => reject(error);
+    image.onerror = reject;
   });
 };
 
 /**
- * Generates a Look-Up Table (LUT) from curve points using linear interpolation.
+ * Generates a Look-Up Table (LUT) from curve points.
  */
 export const generateLUT = (points: Point[]): Uint8Array => {
   const lut = new Uint8Array(256);
